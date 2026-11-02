@@ -1,0 +1,27 @@
+# Dex for the acceptance test (`pnpm test:dex`). Test-only credentials.
+issuer: http://127.0.0.1:5556/dex
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  skipApprovalScreen: true
+
+staticClients:
+  - id: docleus
+    name: Docleus
+    secret: docleus-dex-secret
+    redirectURIs:
+      - http://127.0.0.1:4320/api/auth/oidc/dex/callback
+
+enablePasswordDB: true
+
+staticPasswords:
+  # Password: "password" (bcrypt).
+  - email: ada@example.com
+    hash: "$2y$10$O6glbFgFeQrNQasYNO2GJujmk3wl7LNBKNDf93XsYx5H8NFPFgvBS"
+    username: ada
+    userID: 08a8684b-db88-4b73-90a9-3cd1661f5466

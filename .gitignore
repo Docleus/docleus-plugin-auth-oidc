@@ -1,0 +1,20 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+*.log
+.DS_Store
+AGENTS.md
+CLAUDE.md
+docs/
+
+# Local design documents, release notes for maintainers, and agent state.
+/.session/
+/.codex-resume/
+/output/
+/RELEASE-PREP.md
+/RELEASING.md
+test-results/
+playwright-report/

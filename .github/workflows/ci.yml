@@ -1,0 +1,17 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    uses: Docleus/.github/.github/workflows/ci.yml@main
+    with:
+      repository-name: docleus-plugin-auth-oidc
+      run-e2e: false
