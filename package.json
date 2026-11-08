@@ -1,6 +1,6 @@
 {
   "name": "@docleus/plugin-auth-oidc",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "type": "module",
   "description": "Sign-in through OpenID Connect providers.",
@@ -30,7 +30,7 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm deps && pnpm license && pnpm test"
   },
   "peerDependencies": {
-    "@docleus/sdk": ">=0.0.1 <0.0.5"
+    "@docleus/sdk": ">=0.0.1 <0.0.6"
   },
   "dependencies": {
     "openid-client": "6.8.8"

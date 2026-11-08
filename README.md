@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" /></a>
-  <img alt="Public preview in preparation" src="https://img.shields.io/badge/preview-0.0.4-cfcfcf?style=flat-square" />
+  <img alt="Public preview in preparation" src="https://img.shields.io/badge/preview-0.0.5-cfcfcf?style=flat-square" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square" />
   <a href="https://docleus.io"><img alt="Online documentation" src="https://img.shields.io/badge/docs-docleus.io-111111?style=flat-square" /></a>
 </p>
@@ -107,5 +107,5 @@ before 1.0.
 
 ## Compatibility
 
-Version `0.0.4` supports Docleus core and SDK `0.0.1`, `0.0.2`, `0.0.3` and `0.0.4` through
-the matching `>=0.0.1 <0.0.5` manifest and SDK peer ranges.
+Version `0.0.5` supports Docleus core and SDK `0.0.1`, `0.0.2`, `0.0.3`, `0.0.4` and `0.0.5` through
+the matching `>=0.0.1 <0.0.6` manifest and SDK peer ranges.
