@@ -62,6 +62,11 @@ const sourceSchema = z.strictObject(
     issuer: httpUrl,
     clientId: text,
     clientSecret: text.optional(),
+    clientSecretEnv: text
+      .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, {
+        error: "must be an environment variable name",
+      })
+      .optional(),
     scopes: z
       .array(z.string().regex(/^\S+$/, { error: "must be a scope name" }), {
         error: "must be a list of scope names",
@@ -109,6 +114,16 @@ const configSchema = z
           message: `duplicate source id ${JSON.stringify(source.id)}`,
         });
       }
+      if (
+        source.clientSecret !== undefined &&
+        source.clientSecretEnv !== undefined
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["sources", index],
+          message: "set only one of clientSecret and clientSecretEnv",
+        });
+      }
       ids.add(source.id);
     }
   });
@@ -133,6 +148,21 @@ function describeIssue(issue: z.core.$ZodIssue): string {
   return path === "" ? issue.message : `${path} ${issue.message}`;
 }
 
+function resolveSecret(source: {
+  clientSecret?: string;
+  clientSecretEnv?: string;
+}): string | undefined {
+  if (source.clientSecretEnv === undefined) return source.clientSecret;
+  const secret = text.safeParse(process.env[source.clientSecretEnv]);
+  if (!secret.success) {
+    throw new DocleusError(
+      "oidc/invalid-config",
+      `environment variable ${source.clientSecretEnv} must contain the client secret`,
+    );
+  }
+  return secret.data;
+}
+
 /** Validates the plugin config; throws `oidc/invalid-config` with the first problem found. */
 export function parseOidcConfig(value: unknown): OidcConfig {
   const parsed = configSchema.safeParse(value);
@@ -150,7 +180,7 @@ export function parseOidcConfig(value: unknown): OidcConfig {
       label: source.label,
       issuer: source.issuer,
       clientId: source.clientId,
-      clientSecret: source.clientSecret,
+      clientSecret: resolveSecret(source),
       scopes:
         source.scopes === undefined
           ? DEFAULT_SCOPES

@@ -43,7 +43,7 @@ plugins:
           label: Corp SSO # text of the sign-in button
           issuer: https://idp.example.com/realms/corp
           clientId: docleus
-          clientSecret: ... # omit for a public client
+          clientSecretEnv: DOCLEUS_OIDC_CLIENT_SECRET # omit for a public client
           scopes: [openid, email, profile] # the default; must include openid
           signup: invite # or auto; the default is invite
       publicUrl: https://docs.example.com # optional; the request origin by default
@@ -70,6 +70,8 @@ Failures redirect to `/login?error=<code>` (with `return` when it is not `/`):
 Pending sign-ins are kept in the database (`ctx.storage`) for 10 minutes, so the callback may reach another web process than the one that started the sign-in. Only a hash of the state is stored.
 
 Sign-in callbacks require the short-lived HttpOnly cookie issued to the browser that started that login. Separate login attempts have separate cookies, including across web processes. In-flight sign-ins started before this upgrade must be restarted.
+
+Set `clientSecretEnv` to the name of an environment variable holding a confidential client's secret. The value is read at plugin load and stays out of persisted configuration. Missing or empty referenced variables fail configuration. Explicit `clientSecret` remains supported for existing configurations; choose one field per source.
 
 ## Tests
 

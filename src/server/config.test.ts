@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SCOPES, parseOidcConfig } from "./config.ts";
 
 const source = {
@@ -8,7 +8,40 @@ const source = {
   clientId: "docleus",
 };
 
+afterEach(() => vi.unstubAllEnvs());
+
 describe("parseOidcConfig", () => {
+  it("resolves a named environment secret without putting its value in config", () => {
+    vi.stubEnv("DOCLEUS_TEST_OIDC_SECRET", "test-env-secret");
+    const input = {
+      sources: [{ ...source, clientSecretEnv: "DOCLEUS_TEST_OIDC_SECRET" }],
+    };
+    expect(parseOidcConfig(input).sources[0]?.clientSecret).toBe(
+      "test-env-secret",
+    );
+    expect(JSON.stringify(input)).not.toContain("test-env-secret");
+  });
+
+  it("rejects missing environment secrets and ambiguous secret settings", () => {
+    vi.stubEnv("DOCLEUS_TEST_OIDC_SECRET", undefined);
+    expect(() =>
+      parseOidcConfig({
+        sources: [{ ...source, clientSecretEnv: "DOCLEUS_TEST_OIDC_SECRET" }],
+      }),
+    ).toThrow(expect.objectContaining({ code: "oidc/invalid-config" }));
+    expect(() =>
+      parseOidcConfig({
+        sources: [
+          {
+            ...source,
+            clientSecretEnv: "DOCLEUS_TEST_OIDC_SECRET",
+            clientSecret: "test-secret",
+          },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: "oidc/invalid-config" }));
+  });
+
   it("applies the defaults", () => {
     const config = parseOidcConfig({ sources: [source] });
     expect(config).toEqual({
