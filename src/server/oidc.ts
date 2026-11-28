@@ -1,4 +1,5 @@
 import { z, type Context } from "@docleus/sdk";
+import { createHash } from "node:crypto";
 import {
   allowInsecureRequests,
   authorizationCodeGrant,
@@ -13,7 +14,11 @@ import {
 } from "openid-client";
 import type { OidcConfig, OidcSource } from "./config.ts";
 import { PLUGIN_NAME } from "./name.ts";
-import { createPendingLogins, type PendingLogin } from "./pending.ts";
+import {
+  createPendingLogins,
+  PENDING_LOGIN_TTL_MS,
+  type PendingLogin,
+} from "./pending.ts";
 
 export interface OidcOptions {
   /** Clock for pending-login expiry; `Date.now` by default. */
@@ -26,6 +31,18 @@ export type OidcLoginError =
 
 const SWEEP_INTERVAL_MS = 60 * 1000;
 const MAX_PARAM_LENGTH = 2048;
+
+function loginCookieName(state: string): string {
+  const hash = createHash("sha256").update(state).digest("hex");
+  return `docleus_oidc_${hash}`;
+}
+
+function hasLoginCookie(request: Request, state: string): boolean {
+  const expected = `${loginCookieName(state)}=${state}`;
+  return (request.headers.get("cookie") ?? "")
+    .split(";")
+    .some((pair) => pair.trim() === expected);
+}
 
 export const providerId = (source: OidcSource): string => `oidc.${source.id}`;
 export const startPath = (source: OidcSource): string =>
@@ -249,7 +266,12 @@ export function registerOidc(
           state,
           nonce,
         });
-        return redirect(url.href);
+        const isSecure =
+          new URL(redirectUri(request, source)).protocol === "https:" ||
+          ctx.http.sessionCookie(request, state).includes("; Secure");
+        return redirect(url.href, {
+          "set-cookie": `${loginCookieName(state)}=${state}; HttpOnly; SameSite=Lax; Path=${callbackPath(source)}; Max-Age=${PENDING_LOGIN_TTL_MS / 1000}${isSecure ? "; Secure" : ""}`,
+        });
       },
       { public: true },
     );
@@ -262,7 +284,9 @@ export function registerOidc(
         const parsed = callbackQuery.safeParse(queryParams(query));
         const state = parsed.success ? parsed.data.state : undefined;
         const login =
-          state === undefined ? undefined : await pending.take(state);
+          state !== undefined && hasLoginCookie(request, state)
+            ? await pending.take(state)
+            : undefined;
         if (state === undefined || login?.sourceId !== source.id) {
           logger.warn(
             "callback for source %s with an unknown or expired state",
@@ -328,9 +352,14 @@ export function registerOidc(
         }
 
         const token = await ctx.identity.createSession(user.id);
-        return redirect(login.returnTo, {
+        const response = redirect(login.returnTo, {
           "set-cookie": ctx.http.sessionCookie(request, token),
         });
+        response.headers.append(
+          "set-cookie",
+          `${loginCookieName(state)}=; HttpOnly; SameSite=Lax; Path=${callbackPath(source)}; Max-Age=0`,
+        );
+        return response;
       },
       { public: true },
     );

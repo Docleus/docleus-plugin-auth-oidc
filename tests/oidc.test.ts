@@ -10,10 +10,12 @@ let provider: FakeProvider;
 let instance: Instance | undefined;
 let time = 1_000_000;
 const now = () => time;
+const loginCookies = new Map<string, string>();
 
 beforeEach(async () => {
   provider = await startFakeProvider();
   time = 1_000_000;
+  loginCookies.clear();
 });
 
 afterEach(async () => {
@@ -53,11 +55,21 @@ async function authorize(app: Instance, query = ""): Promise<string> {
   const response = await fetch(location, { redirect: "manual" });
   const callback = response.headers.get("location");
   if (callback === null) throw new Error("provider did not redirect");
+  loginCookies.set(
+    callback,
+    start.headers.get("set-cookie")?.split(";")[0] ?? "",
+  );
   return callback;
 }
 
+function complete(app: Instance, callback: string) {
+  return app.fetch(callback, {
+    headers: { cookie: loginCookies.get(callback) ?? "" },
+  });
+}
+
 async function signIn(app: Instance, query = ""): Promise<Response> {
-  return app.fetch(await authorize(app, query));
+  return complete(app, await authorize(app, query));
 }
 
 function loginError(response: Response): string | null {
@@ -132,6 +144,15 @@ describe("GET start", () => {
     );
   });
 
+  it("limits the browser cookie to the callback and marks HTTPS cookies secure", async () => {
+    const app = await load({}, { publicUrl: "https://docs.example.com" });
+    const response = await app.fetch(START);
+    const cookie = response.headers.get("set-cookie");
+    expect(cookie).toContain("HttpOnly; SameSite=Lax");
+    expect(cookie).toContain("Path=/api/auth/oidc/test/callback; Max-Age=600");
+    expect(cookie).toContain("; Secure");
+  });
+
   it.each([
     "//evil.example",
     "/\\evil.example",
@@ -177,6 +198,35 @@ describe("GET start", () => {
 });
 
 describe("GET callback", () => {
+  it("rejects a callback in a browser that did not start the sign-in", async () => {
+    const app = await load({ signup: "auto" });
+    const callback = await authorize(app);
+    expect(loginError(await app.fetch(callback))).toBe("oidc-failed");
+    expect(await app.root.identity.countUsers()).toBe(0);
+    expect(
+      sessionToken((await complete(app, callback)).headers.get("set-cookie")),
+    ).toBeDefined();
+  });
+
+  it("keeps concurrent sign-ins bound to their own browser cookies", async () => {
+    const app = await load({ signup: "auto" });
+    const first = await authorize(app);
+    const second = await authorize(app);
+    expect(
+      loginError(
+        await app.fetch(first, {
+          headers: { cookie: loginCookies.get(second) ?? "" },
+        }),
+      ),
+    ).toBe("oidc-failed");
+    expect(
+      sessionToken((await complete(app, first)).headers.get("set-cookie")),
+    ).toBeDefined();
+    expect(
+      sessionToken((await complete(app, second)).headers.get("set-cookie")),
+    ).toBeDefined();
+  });
+
   it("creates the user when signup is automatic and starts a session", async () => {
     const app = await load({ signup: "auto" });
     provider.user = {
@@ -356,16 +406,16 @@ describe("GET callback", () => {
     const app = await load({ signup: "auto" });
     const callback = await authorize(app);
     expect(
-      (await app.fetch(callback)).headers.get("set-cookie"),
+      (await complete(app, callback)).headers.get("set-cookie"),
     ).not.toBeNull();
-    expect(loginError(await app.fetch(callback))).toBe("oidc-failed");
+    expect(loginError(await complete(app, callback))).toBe("oidc-failed");
   });
 
   it("rejects a state older than ten minutes", async () => {
     const app = await load({ signup: "auto" });
     const callback = await authorize(app);
     time += PENDING_LOGIN_TTL_MS + 1;
-    expect(loginError(await app.fetch(callback))).toBe("oidc-failed");
+    expect(loginError(await complete(app, callback))).toBe("oidc-failed");
   });
 
   it("finishes a sign-in on another process that shares the database", async () => {
@@ -377,10 +427,10 @@ describe("GET callback", () => {
     try {
       instance = await loadPlugin(config, { now }, first.root.storage);
       const callback = await authorize(first);
-      const response = await instance.fetch(callback);
+      const response = await complete(instance, callback);
       expect(response.status).toBe(302);
       expect(sessionToken(response.headers.get("set-cookie"))).toBeDefined();
-      expect(loginError(await first.fetch(callback))).toBe("oidc-failed");
+      expect(loginError(await complete(first, callback))).toBe("oidc-failed");
     } finally {
       await instance?.dispose();
       instance = undefined;
@@ -414,7 +464,7 @@ describe("GET callback", () => {
     const app = await load({ signup: "auto" });
     const callback = await authorize(app, "?return=/docs");
     provider.tokenError = "invalid_grant";
-    const response = await app.fetch(callback);
+    const response = await complete(app, callback);
     expect(loginError(response)).toBe("oidc-failed");
     const warnings = app.warnings.join("\n");
     expect(warnings).toContain("sign-in through source test failed");

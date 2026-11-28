@@ -69,6 +69,8 @@ Failures redirect to `/login?error=<code>` (with `return` when it is not `/`):
 
 Pending sign-ins are kept in the database (`ctx.storage`) for 10 minutes, so the callback may reach another web process than the one that started the sign-in. Only a hash of the state is stored.
 
+Sign-in callbacks require the short-lived HttpOnly cookie issued to the browser that started that login. Separate login attempts have separate cookies, including across web processes. In-flight sign-ins started before this upgrade must be restarted.
+
 ## Tests
 
 - `pnpm test`: unit tests, and integration tests (`tests/oidc.test.ts`) against the real core identity, authz, storage and http services with an in-process fake provider (`tests/fake-provider.ts`, ID tokens signed with `jose`).
