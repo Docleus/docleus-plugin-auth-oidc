@@ -332,7 +332,7 @@ export function registerOidc(
           source.signup === "auto" ||
           (await isInvitedSignup(login.invitation, claims.email));
         const user = await ctx.identity.resolveExternal(
-          providerId(source),
+          `${providerId(source)}:${source.issuer.href}`,
           {
             subject: claims.subject,
             email: claims.email,

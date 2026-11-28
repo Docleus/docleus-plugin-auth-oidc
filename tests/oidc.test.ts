@@ -338,6 +338,75 @@ describe("GET callback", () => {
     expect(await app.root.identity.countUsers()).toBe(0);
   });
 
+  it("requires verified email to recover a legacy source binding", async () => {
+    const app = await load({ signup: "auto" });
+    const legacy = await app.root.identity.resolveExternal(
+      "oidc.test",
+      {
+        subject: "u1",
+        email: "ada@example.com",
+        name: "Ada",
+        isEmailVerified: true,
+      },
+      { allowSignup: true },
+    );
+    provider.user.email_verified = false;
+    expect(loginError(await signIn(app))).toBe("oidc-email-unverified");
+    provider.user.email_verified = true;
+    const token = sessionToken((await signIn(app)).headers.get("set-cookie"));
+    expect((await app.root.identity.authenticate(token ?? ""))?.id).toBe(
+      legacy?.id,
+    );
+    provider.user.email = "changed@example.com";
+    const again = sessionToken((await signIn(app)).headers.get("set-cookie"));
+    expect((await app.root.identity.authenticate(again ?? ""))?.id).toBe(
+      legacy?.id,
+    );
+  });
+
+  it("keeps identities from different issuers separate when a source id is reused", async () => {
+    const app = await load({ signup: "auto" });
+    const original = sessionToken(
+      (await signIn(app)).headers.get("set-cookie"),
+    );
+    const existing = await app.root.identity.authenticate(original ?? "");
+    const other = await startFakeProvider();
+    other.user = {
+      sub: "u1",
+      email: "other@example.com",
+      email_verified: true,
+    };
+    await app.unloadPlugin();
+    const replacement = await loadPlugin(
+      {
+        sources: [
+          source({
+            issuer: other.issuer,
+            clientId: other.clientId,
+            clientSecret: other.clientSecret,
+            signup: "auto",
+          }),
+        ],
+        allowInsecureRequests: true,
+      },
+      { now },
+      app.root.storage,
+    );
+    try {
+      const token = sessionToken(
+        (await signIn(replacement)).headers.get("set-cookie"),
+      );
+      const signedIn = await replacement.root.identity.authenticate(
+        token ?? "",
+      );
+      expect(signedIn?.email).toBe("other@example.com");
+      expect(signedIn?.id).not.toBe(existing?.id);
+    } finally {
+      await replacement.dispose();
+      await other.close();
+    }
+  });
+
   it("links a verified email to the existing user", async () => {
     const app = await load();
     const existing = await app.root.identity.createUser({

@@ -112,3 +112,9 @@ before 1.0.
 ## Compatibility
 
 Version `0.0.11` supports core and SDK `0.0.1` through `0.0.11` with matching `>=0.0.1 <0.0.12` manifest and SDK peer ranges. Install the complete distribution `0.0.13` for the repaired editing and export behavior.
+
+## Identity binding upgrades
+
+OIDC identities are scoped to the configured source and issuer. Replacing an issuer under an existing source id cannot reuse the previous issuer's subject binding.
+
+Bindings created before 0.0.12 are re-established on sign-in through a verified email matching the existing account. Existing local passwords and sessions continue to work. Providers that cannot verify an existing user's email require an administrator to arrange a verified sign-in or local account recovery before upgrading. Do not assign an unverified identity to an existing account based on its subject alone.
