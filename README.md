@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" /></a>
-  <img alt="Public preview in preparation" src="https://img.shields.io/badge/preview-0.0.11-cfcfcf?style=flat-square" />
+  <img alt="Public preview in preparation" src="https://img.shields.io/badge/preview-0.0.12-cfcfcf?style=flat-square" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square" />
   <a href="https://docleus.io"><img alt="Online documentation" src="https://img.shields.io/badge/docs-docleus.io-111111?style=flat-square" /></a>
 </p>
@@ -111,7 +111,7 @@ before 1.0.
 
 ## Compatibility
 
-Version `0.0.11` supports core and SDK `0.0.1` through `0.0.11` with matching `>=0.0.1 <0.0.12` manifest and SDK peer ranges. Install the complete distribution `0.0.13` for the repaired editing and export behavior.
+Version `0.0.12` supports core and SDK `0.0.1` through `0.0.12` with matching `>=0.0.1 <0.0.13` manifest and SDK peer ranges. Install the complete distribution `0.0.14` for the repaired editing and export behavior.
 
 ## Identity binding upgrades
 

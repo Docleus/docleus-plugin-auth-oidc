@@ -1,8 +1,8 @@
 {
   "name": "@docleus/plugin-auth-oidc",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "engines": {
-    "docleus": ">=0.0.1 <0.0.12"
+    "docleus": ">=0.0.1 <0.0.13"
   },
   "entries": {
     "server": "./dist/server/index.js"
